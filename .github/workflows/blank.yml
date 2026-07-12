@@ -23,7 +23,7 @@ jobs:
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # Runs a single command using the runners shell
       - name: Run a one-line script
@@ -41,3 +41,38 @@ jobs:
       - name: Print generated versions
         run: |
           echo "Version for Python backend: ${{ steps.eval_version.outputs.build_version }}"
+      
+      - uses: actions/create-github-app-token@v3
+        id: app-token
+        with:
+          # required
+          client-id: ${{ vars.PROMOTE_CLIENT_ID }}
+          private-key: ${{ secrets.PROMOTE_APP_KEY }}
+      - name: Get GitHub App User ID
+        id: get-user-id
+        run: echo "user-id=$(gh api "/users/${{ steps.app-token.outputs.app-slug }}[bot]" --jq .id)" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+      - id: committer
+        run: echo "string=${{ steps.app-token.outputs.app-slug }}[bot] <${{ steps.get-user-id.outputs.user-id }}+${{ steps.app-token.outputs.app-slug }}[bot]@users.noreply.github.com>"  >> "$GITHUB_OUTPUT"
+      - run: echo "committer string is ${{ steps.committer.outputs.string }}"
+      - uses: actions/checkout@v7
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          repository: kuzma975/ci-test-project-b
+          # Make sure the value of GITHUB_TOKEN will not be persisted in repo's config
+          persist-credentials: false
+          path: project-b
+      - name: Update Docker Tag with yq
+        run: |
+          cd project-b
+          # Оновлюємо значення тегу у файлі конфігурації за допомогою yq (без sed!)
+          yq -i '.project-b.tag = "${{ steps.eval_version.outputs.build_version }}"' clusters/dev/values.yaml
+          
+          # Налаштовуємо ім'я бота для гарного відображення в історії Git
+          git config user.name "promote-bot[bot]"
+          git config user.email "promote-bot[bot]@users.noreply.github.com"
+          
+          git add clusters/dev/values.yaml
+          git commit -m "chore(gitops): bump project-b docker tag to ${{ steps.eval_version.outputs.build_version }}"
+          git push origin main
