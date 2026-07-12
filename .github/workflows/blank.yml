@@ -61,7 +61,7 @@ jobs:
           token: ${{ steps.app-token.outputs.token }}
           repository: kuzma975/ci-test-project-b
           # Make sure the value of GITHUB_TOKEN will not be persisted in repo's config
-          persist-credentials: false
+          persist-credentials: true
           path: project-b
       - name: Update Docker Tag with yq
         run: |
