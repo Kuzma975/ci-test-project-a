@@ -33,4 +33,6 @@ jobs:
       - name: Run a multi-line script
         run: |
           jq --version
-          yq eval ".project.version" pyproject.toml
+          CLEAN_VERSION=$(yq eval ".project.version" pyproject.toml)
+          BUILD_VERSION="${CLEAN_VERSION}.dev${{ github.run_number }}"
+          echo ${BUILD_VERSION}
