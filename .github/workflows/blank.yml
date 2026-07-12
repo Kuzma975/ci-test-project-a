@@ -33,6 +33,4 @@ jobs:
       - name: Run a multi-line script
         run: |
           jq --version
-          # pip install --upgrade pip
-          # pip install yq
-          yq eval "project.version" pyproject.toml
+          yq eval ".project.version" pyproject.toml
